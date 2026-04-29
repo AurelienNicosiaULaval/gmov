@@ -31,10 +31,10 @@ summary.gmov_generative <- function(object, ...) {
 
     statistic_name <- switch(
       metric_name,
-      ud = "mean observed-simulated W1",
+      ud = "mean observed-simulated grid W1",
       msd = "MSD integrated squared error",
       sinuosity = "absolute straightness deviation",
-      barrier = "crossing count",
+      barrier = "segment-intersection count",
       NA_character_
     )
 
@@ -140,9 +140,9 @@ plot_metric_barrier <- function(x) {
     ggplot2::geom_vline(xintercept = x$observed_count, linewidth = 0.8) +
     ggplot2::theme_bw() +
     ggplot2::labs(
-      x = "Barrier crossings",
+      x = "Movement segments intersecting barrier",
       y = "Number of simulations",
-      title = "Barrier crossing",
+      title = "Barrier interactions",
       subtitle = paste0("Monte Carlo p = ", format_p(metric_p_value(x)))
     )
 }

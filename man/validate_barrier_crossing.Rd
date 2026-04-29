@@ -29,15 +29,16 @@ simulations, as in an over-permeable fitted model.}
 \item{...}{Passed to \code{\link[=as_gmov_simulations]{as_gmov_simulations()}}.}
 }
 \value{
-A list with observed and simulated crossing counts and a Monte Carlo
-rank test.
+A list with observed and simulated segment-intersection counts and a
+Monte Carlo rank test.
 }
 \description{
 Counts movement segments that intersect a known linear barrier. This is a
-segment-intersection proxy for barrier crossing: a segment that touches,
+segment-intersection diagnostic for barrier interaction: a segment that touches,
 overlaps, or crosses the barrier is counted once, even if it intersects
 multiple barrier features. This diagnostic is intended for settings where a
-barrier is specified before validation. It does not discover unknown barriers.
+barrier is specified before validation. It does not discover unknown barriers
+and does not classify the ecological mechanism of an interaction.
 }
 \examples{
 barrier <- sf::st_sfc(

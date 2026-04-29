@@ -3,7 +3,8 @@
 #' Converts a track-like object to the minimal track representation used by
 #' gmov. The returned object is a tibble with numeric `x_` and `y_` columns.
 #' Many `amt` tracks use these coordinate names and should work when they are
-#' data-frame-like.
+#' data-frame-like. This helper intentionally works with simple object shapes
+#' and does not depend on `amt` internals.
 #' Coordinates are assumed to be in a common planar coordinate system. gmov does
 #' not transform track coordinates.
 #'
@@ -32,7 +33,7 @@ as_gmov_track.default <- function(x, x_col = NULL, y_col = NULL, ...) {
   }
 
   if (!is.data.frame(x)) {
-    stop("`x` must be a data frame, an sf point object, or an amt-compatible track.", call. = FALSE)
+    stop("`x` must be a data frame, an sf point object, or a data-frame-like track.", call. = FALSE)
   }
 
   out <- tibble::as_tibble(x)
@@ -59,12 +60,16 @@ as_gmov_track_sf <- function(x, x_col = NULL, y_col = NULL, ...) {
 #'
 #' Converts simulated trajectories to a named list of gmov tracks. The preferred
 #' input is a list of track-like objects. A single data frame can also be used
-#' if it contains a simulation identifier column.
+#' if it contains a simulation identifier column. This covers common simulated
+#' track outputs and data-frame-like objects following `amt` coordinate
+#' conventions, but it is not a wrapper around `amt` simulation internals.
 #'
 #' @param simulated A list of track-like objects, or a data frame containing
 #'   multiple tracks.
 #' @param id_col Optional character name of the simulation identifier column
-#'   when `simulated` is a data frame.
+#'   when `simulated` is a data frame. If omitted, gmov looks for common
+#'   simulation columns such as `sim_id`, `sim_id_`, `.simulation`,
+#'   `simulation`, `.replicate`, or `replicate`.
 #' @param ... Passed to [as_gmov_track()].
 #'
 #' @return A named list of gmov tracks.
@@ -92,6 +97,9 @@ as_gmov_simulations <- function(simulated, id_col = NULL, ...) {
         "`simulated` is a data frame, so it must contain a simulation identifier column.",
         call. = FALSE
       )
+    }
+    if (!is.character(id_col) || length(id_col) != 1L || is.na(id_col) || !id_col %in% names(sim_tbl)) {
+      stop("`id_col` must name one simulation identifier column in `simulated`.", call. = FALSE)
     }
 
     sims <- lapply(split(sim_tbl, sim_tbl[[id_col]]), as_gmov_track, ...)
@@ -168,6 +176,10 @@ validate_track <- function(out) {
 }
 
 detect_simulation_id <- function(x) {
-  candidates <- c("sim_id", "sim_id_", ".simulation", "simulation", "replicate")
-  candidates[candidates %in% names(x)][1] %||% NULL
+  candidates <- c("sim_id", "sim_id_", ".simulation", "simulation", ".replicate", "replicate")
+  matched <- candidates[candidates %in% names(x)]
+  if (length(matched) < 1L) {
+    return(NULL)
+  }
+  matched[1]
 }

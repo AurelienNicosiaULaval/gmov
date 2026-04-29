@@ -17,7 +17,9 @@ number of grid cells in the x and y directions.}
 
 \item{bounds}{Optional named numeric vector with \code{xmin}, \code{xmax}, \code{ymin}, and
 \code{ymax}. If \code{NULL}, bounds are computed from observed and simulated tracks.
-Coordinate units should be meaningful Euclidean distance units.}
+If supplied, the bounds must contain all observed and simulated track
+coordinates. Coordinate units should be meaningful Euclidean distance
+units.}
 
 \item{...}{Passed to \code{\link[=as_gmov_simulations]{as_gmov_simulations()}}.}
 }
@@ -34,7 +36,9 @@ and should not be interpreted as the exact Wasserstein distance between
 continuous utilization distributions. The observed statistic is the mean
 Wasserstein distance between the observed grid UD and each simulated grid UD.
 Simulated reference statistics are leave-one-out mean
-simulation-to-simulation Wasserstein distances.
+simulation-to-simulation Wasserstein distances. Computation increases with
+the number of occupied grid cells and with pairwise comparisons among
+simulated tracks.
 }
 \examples{
 observed <- data.frame(x = c(0, 1, 1), y = c(0, 0, 1))

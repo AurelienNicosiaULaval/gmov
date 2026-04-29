@@ -65,6 +65,8 @@ test_that("UD validation returns Wasserstein statistics", {
   expect_s3_class(res, "gmov_metric_ud")
   expect_true(is.finite(res$statistic))
   expect_equal(nrow(res$simulated_statistics), 2)
+  expect_equal(res$method, "empirical_grid_wasserstein")
+  expect_equal(sum(res$observed_ud$mass), 1)
 })
 
 test_that("UD validation checks grid size and bounds", {
@@ -78,5 +80,13 @@ test_that("UD validation checks grid size and bounds", {
   expect_error(
     validate_ud(observed, simulated, bounds = c(xmin = 1, xmax = 0, ymin = 0, ymax = 1)),
     "xmin < xmax"
+  )
+  expect_error(
+    validate_ud(
+      observed,
+      simulated,
+      bounds = c(xmin = 0, xmax = 1, ymin = 0, ymax = 1)
+    ),
+    "must contain all observed and simulated track coordinates"
   )
 })

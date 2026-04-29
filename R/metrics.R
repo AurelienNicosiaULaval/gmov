@@ -47,7 +47,9 @@ msd_curve <- function(track, max_lag = NULL) {
 #' continuous utilization distributions. The observed statistic is the mean
 #' Wasserstein distance between the observed grid UD and each simulated grid UD.
 #' Simulated reference statistics are leave-one-out mean
-#' simulation-to-simulation Wasserstein distances.
+#' simulation-to-simulation Wasserstein distances. Computation increases with
+#' the number of occupied grid cells and with pairwise comparisons among
+#' simulated tracks.
 #'
 #' @param observed Observed track-like object.
 #' @param simulated A list of simulated track-like objects or a data frame with
@@ -56,7 +58,9 @@ msd_curve <- function(track, max_lag = NULL) {
 #'   number of grid cells in the x and y directions.
 #' @param bounds Optional named numeric vector with `xmin`, `xmax`, `ymin`, and
 #'   `ymax`. If `NULL`, bounds are computed from observed and simulated tracks.
-#'   Coordinate units should be meaningful Euclidean distance units.
+#'   If supplied, the bounds must contain all observed and simulated track
+#'   coordinates. Coordinate units should be meaningful Euclidean distance
+#'   units.
 #' @param ... Passed to [as_gmov_simulations()].
 #'
 #' @return A list with observed and simulated empirical grid UDs, Wasserstein
@@ -83,6 +87,7 @@ validate_ud <- function(observed, simulated, grid_size = 50, bounds = NULL, ...)
 
   grid_size <- normalize_grid_size(grid_size)
   bounds <- validate_bounds(bounds %||% combined_bounds(obs, sims))
+  check_tracks_within_bounds(obs, sims, bounds)
 
   ud_obs <- empirical_grid_ud(obs, grid_size = grid_size, bounds = bounds)
   ud_sims <- lapply(sims, empirical_grid_ud, grid_size = grid_size, bounds = bounds)
@@ -92,6 +97,7 @@ validate_ud <- function(observed, simulated, grid_size = 50, bounds = NULL, ...)
     function(ud_sim) wasserstein_ud(ud_obs, ud_sim),
     numeric(1)
   )
+  check_finite_vector(obs_distances, "Observed-simulated Wasserstein distances")
 
   n_sims <- length(ud_sims)
   distance_matrix <- matrix(0, nrow = n_sims, ncol = n_sims)
@@ -105,7 +111,9 @@ validate_ud <- function(observed, simulated, grid_size = 50, bounds = NULL, ...)
   sim_statistics <- vapply(seq_len(n_sims), function(i) {
     mean(distance_matrix[i, -i], na.rm = TRUE)
   }, numeric(1))
+  check_finite_vector(sim_statistics, "Simulation-to-simulation Wasserstein statistics")
   observed_statistic <- mean(obs_distances, na.rm = TRUE)
+  check_finite_vector(observed_statistic, "Observed UD discrepancy statistic")
 
   out <- list(
     metric = "ud",
@@ -289,10 +297,11 @@ validate_sinuosity <- function(observed, simulated, ...) {
 #' Validate barrier crossing behavior
 #'
 #' Counts movement segments that intersect a known linear barrier. This is a
-#' segment-intersection proxy for barrier crossing: a segment that touches,
+#' segment-intersection diagnostic for barrier interaction: a segment that touches,
 #' overlaps, or crosses the barrier is counted once, even if it intersects
 #' multiple barrier features. This diagnostic is intended for settings where a
-#' barrier is specified before validation. It does not discover unknown barriers.
+#' barrier is specified before validation. It does not discover unknown barriers
+#' and does not classify the ecological mechanism of an interaction.
 #'
 #' @param observed Observed track-like object.
 #' @param simulated A list of simulated track-like objects or a data frame with
@@ -305,8 +314,8 @@ validate_sinuosity <- function(observed, simulated, ...) {
 #'   simulations, as in an over-permeable fitted model.
 #' @param ... Passed to [as_gmov_simulations()].
 #'
-#' @return A list with observed and simulated crossing counts and a Monte Carlo
-#'   rank test.
+#' @return A list with observed and simulated segment-intersection counts and a
+#'   Monte Carlo rank test.
 #' @export
 #'
 #' @references
@@ -347,6 +356,7 @@ validate_barrier_crossing <- function(
 
   out <- list(
     metric = "barrier",
+    method = "segment_intersection_count",
     observed_count = observed_count,
     simulated_counts = tibble::tibble(
       sim_id = names(sims),
@@ -472,6 +482,10 @@ empirical_grid_ud <- function(track, grid_size, bounds) {
   counts$y_bin <- as.integer(as.character(counts$y_bin))
   counts <- counts[counts$n > 0, , drop = FALSE]
 
+  if (nrow(counts) < 1L || sum(counts$n) <= 0) {
+    stop("Empirical grid UD has no occupied cells.", call. = FALSE)
+  }
+
   tibble::tibble(
     x = x_breaks[counts$x_bin] + diff(x_breaks)[counts$x_bin] / 2,
     y = y_breaks[counts$y_bin] + diff(y_breaks)[counts$y_bin] / 2,
@@ -480,9 +494,18 @@ empirical_grid_ud <- function(track, grid_size, bounds) {
 }
 
 wasserstein_ud <- function(ud_a, ud_b) {
+  check_empirical_ud(ud_a, "ud_a")
+  check_empirical_ud(ud_b, "ud_b")
+
   a <- transport::wpp(as.matrix(ud_a[, c("x", "y")]), ud_a$mass)
   b <- transport::wpp(as.matrix(ud_b[, c("x", "y")]), ud_b$mass)
-  transport::wasserstein(a, b, p = 1, method = "networkflow")
+  distance <- transport::wasserstein(a, b, p = 1, method = "networkflow")
+
+  if (!is.numeric(distance) || length(distance) != 1L || !is.finite(distance)) {
+    stop("Wasserstein distance calculation returned a non-finite value.", call. = FALSE)
+  }
+
+  unname(distance)
 }
 
 validate_barrier_geometry <- function(barrier) {
@@ -522,4 +545,48 @@ count_barrier_crossings <- function(track, barrier_geom) {
   segments <- sf::st_sfc(segment_list, crs = barrier_crs)
   intersections <- sf::st_intersects(segments, barrier_geom, sparse = FALSE)
   as.integer(sum(rowSums(intersections) > 0))
+}
+
+check_tracks_within_bounds <- function(obs, sims, bounds) {
+  tracks <- c(list(observed = obs), sims)
+  outside <- vapply(tracks, function(track) {
+    trk <- as_gmov_track(track)
+    any(
+      trk$x_ < bounds["xmin"] |
+        trk$x_ > bounds["xmax"] |
+        trk$y_ < bounds["ymin"] |
+        trk$y_ > bounds["ymax"]
+    )
+  }, logical(1))
+
+  if (any(outside)) {
+    stop("`bounds` must contain all observed and simulated track coordinates.", call. = FALSE)
+  }
+
+  invisible(TRUE)
+}
+
+check_empirical_ud <- function(ud, name) {
+  required <- c("x", "y", "mass")
+  if (!is.data.frame(ud) || !all(required %in% names(ud))) {
+    stop("`", name, "` must be an empirical grid UD with x, y, and mass columns.", call. = FALSE)
+  }
+
+  values <- ud[, required]
+  if (any(!is.finite(as.matrix(values)))) {
+    stop("`", name, "` contains non-finite grid coordinates or masses.", call. = FALSE)
+  }
+
+  if (any(ud$mass < 0) || sum(ud$mass) <= 0) {
+    stop("`", name, "` must contain non-negative masses with positive total mass.", call. = FALSE)
+  }
+
+  invisible(TRUE)
+}
+
+check_finite_vector <- function(x, label) {
+  if (!is.numeric(x) || length(x) < 1L || any(!is.finite(x))) {
+    stop(label, " must be finite.", call. = FALSE)
+  }
+  invisible(TRUE)
 }

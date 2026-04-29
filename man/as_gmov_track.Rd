@@ -24,7 +24,8 @@ A tibble with at least \code{x_} and \code{y_} columns.
 Converts a track-like object to the minimal track representation used by
 gmov. The returned object is a tibble with numeric \code{x_} and \code{y_} columns.
 Many \code{amt} tracks use these coordinate names and should work when they are
-data-frame-like.
+data-frame-like. This helper intentionally works with simple object shapes
+and does not depend on \code{amt} internals.
 Coordinates are assumed to be in a common planar coordinate system. gmov does
 not transform track coordinates.
 }

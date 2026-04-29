@@ -18,7 +18,7 @@ The first package version focuses on four validation pillars:
 - emergent utilization distributions;
 - mean squared displacement;
 - path sinuosity;
-- barrier crossing across known linear features.
+- barrier interactions with known linear features.
 
 These diagnostics follow the framework described in:
 
@@ -72,9 +72,11 @@ plot(res, metric = "msd")
 iSSF workflows, not as a replacement for `amt`. Users should fit and simulate
 movement models with `amt` or another modeling workflow, then pass the observed
 and simulated tracks to `gmov`. The current interface accepts `amt`-style
-tracks with `x_` and `y_` coordinate columns, and direct `amt` integration tests
-are planned. Coordinates are assumed to be in a common planar coordinate system;
-`gmov` does not transform coordinates.
+tracks with `x_` and `y_` coordinate columns and step-like objects with
+`x1_`, `y1_`, `x2_`, and `y2_`. Conditional integration tests are included for
+these object shapes when `amt` is available and can be loaded. Coordinates are
+assumed to be in a common planar coordinate system; `gmov` does not transform
+coordinates.
 
 ```r
 library(amt)
@@ -109,19 +111,22 @@ res <- validate_ssf_generative(
 - `validate_ud()` uses empirical grid utilization distributions and the
   1-Wasserstein distance through the `transport` package. This is a
   Wasserstein distance between discretized empirical grid distributions, not an
-  exact distance between continuous utilization distributions.
+  exact distance between continuous utilization distributions. Computation
+  increases with the number of occupied grid cells and pairwise comparisons
+  among simulated tracks.
 - `validate_ssf_generative()` validates supplied simulations. It does not yet
   provide wrappers around `amt` simulation internals.
 - Barrier validation requires a known barrier geometry supplied before running
   the diagnostic. The implementation counts movement segments that intersect
   the barrier; touching or overlapping the barrier also counts as an
-  intersection.
+  intersection. This is a segment-intersection diagnostic, not a complete
+  ecological classification of barrier interactions.
 - Monte Carlo p-values should be interpreted as conditional diagnostics for the
   supplied fitted model and simulation procedure.
 
 ## Roadmap
 
-- Add an integration test using real `amt` track objects.
+- Broaden conditional integration tests for additional `amt` workflows.
 - Consider an optional wrapper for common `amt` simulation outputs.
 - Improve computational performance for UD validation with many simulations or
   fine grids.

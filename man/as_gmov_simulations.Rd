@@ -11,7 +11,9 @@ as_gmov_simulations(simulated, id_col = NULL, ...)
 multiple tracks.}
 
 \item{id_col}{Optional character name of the simulation identifier column
-when \code{simulated} is a data frame.}
+when \code{simulated} is a data frame. If omitted, gmov looks for common
+simulation columns such as \code{sim_id}, \code{sim_id_}, \code{.simulation},
+\code{simulation}, \code{.replicate}, or \code{replicate}.}
 
 \item{...}{Passed to \code{\link[=as_gmov_track]{as_gmov_track()}}.}
 }
@@ -21,7 +23,9 @@ A named list of gmov tracks.
 \description{
 Converts simulated trajectories to a named list of gmov tracks. The preferred
 input is a list of track-like objects. A single data frame can also be used
-if it contains a simulation identifier column.
+if it contains a simulation identifier column. This covers common simulated
+track outputs and data-frame-like objects following \code{amt} coordinate
+conventions, but it is not a wrapper around \code{amt} simulation internals.
 }
 \examples{
 sims <- list(
