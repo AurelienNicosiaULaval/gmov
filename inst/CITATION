@@ -1,0 +1,17 @@
+citHeader("To cite gmov, please cite the accompanying article:")
+
+bibentry(
+  bibtype = "Article",
+  title = "Beyond the next step: A multi-criteria generative validation framework for step selection functions",
+  author = person("Aurelien", "Nicosia"),
+  journal = "Methods in Ecology and Evolution",
+  year = "2026",
+  doi = "10.1111/2041-210x.70313",
+  url = "https://doi.org/10.1111/2041-210x.70313",
+  textVersion = paste(
+    "Nicosia, A. (2026).",
+    "Beyond the next step: A multi-criteria generative validation framework for step selection functions.",
+    "Methods in Ecology and Evolution.",
+    "https://doi.org/10.1111/2041-210x.70313"
+  )
+)

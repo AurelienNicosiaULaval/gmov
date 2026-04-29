@@ -1,0 +1,146 @@
+---
+title: "Generative validation of SSF / iSSF models"
+output: rmarkdown::html_vignette
+embed-resources: true
+vignette: >
+  %\VignetteIndexEntry{Generative validation of SSF / iSSF models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4
+)
+```
+
+```{r setup}
+library(gmov)
+```
+
+## Motivation
+
+SSF and iSSF models are usually fitted to one-step transitions. A model can fit
+local movement decisions while still generating unrealistic long-run
+trajectories when iterated forward. The goal of `gmov` is to validate simulated
+trajectories against observed trajectories using trajectory-level summaries.
+
+The framework follows Nicosia (2026), which proposes four complementary
+generative validation pillars:
+
+- emergent space use;
+- diffusion behavior;
+- path structure;
+- barrier interactions.
+
+This vignette uses simulated toy data. It is illustrative and does not
+reproduce the empirical or synthetic results from the article.
+
+All examples below use planar toy coordinates. For real data, observed tracks,
+simulated tracks, and barrier geometries should use a common projected
+coordinate system.
+
+Reference: Nicosia, A. (2026). Beyond the next step: A multi-criteria
+generative validation framework for step selection functions. *Methods in
+Ecology and Evolution*. <https://doi.org/10.1111/2041-210x.70313>
+
+## Toy tracks
+
+```{r toy-data}
+set.seed(10)
+
+simulate_track <- function(n = 60, step_sd = 1, drift = c(0, 0)) {
+  dx <- stats::rnorm(n, mean = drift[1], sd = step_sd)
+  dy <- stats::rnorm(n, mean = drift[2], sd = step_sd)
+
+  data.frame(
+    x = cumsum(dx),
+    y = cumsum(dy)
+  )
+}
+
+observed_track <- simulate_track(n = 60, step_sd = 0.8)
+simulated_tracks <- replicate(
+  n = 9,
+  expr = simulate_track(n = 60, step_sd = 0.8),
+  simplify = FALSE
+)
+```
+
+## Run the validation
+
+```{r validation}
+res <- validate_ssf_generative(
+  observed = observed_track,
+  simulated = simulated_tracks,
+  metrics = c("ud", "msd", "sinuosity"),
+  ud_args = list(grid_size = 12),
+  msd_args = list(max_lag = 20)
+)
+
+summary(res)
+```
+
+## Visual summaries
+
+```{r msd-plot}
+plot(res, metric = "msd")
+```
+
+```{r sinuosity-plot}
+plot(res, metric = "sinuosity")
+```
+
+## Barrier interactions
+
+Barrier validation requires a known linear feature supplied before validation.
+The example below creates a simple vertical line. The crossing diagnostic tests
+whether observed crossings are unusually few relative to simulations by
+default, which corresponds to a fitted model that may be too permeable.
+
+```{r barrier}
+barrier <- sf::st_sfc(
+  sf::st_linestring(matrix(c(0, -20, 0, 20), ncol = 2, byrow = TRUE)),
+  crs = 3857
+)
+
+barrier_res <- validate_ssf_generative(
+  observed = observed_track,
+  simulated = simulated_tracks,
+  metrics = "barrier",
+  barrier = barrier
+)
+
+summary(barrier_res)
+plot(barrier_res, metric = "barrier")
+```
+
+## Sketch of an amt workflow
+
+The package is intended to sit after an `amt` modeling and simulation workflow.
+The precise simulation call depends on the fitted model and user choices, so
+the outline below is not evaluated.
+
+```{r amt-sketch, eval = FALSE}
+library(amt)
+library(gmov)
+
+# observed_track <- ...
+# steps <- observed_track |>
+#   steps_by_burst() |>
+#   random_steps(n = 15)
+#
+# fitted_model <- steps |>
+#   fit_clogit(case_ ~ forest + log(sl_) + cos(ta_) + strata(step_id_))
+#
+# simulated_tracks <- ...
+
+res <- validate_ssf_generative(
+  observed = observed_track,
+  simulated = simulated_tracks,
+  metrics = c("ud", "msd", "sinuosity")
+)
+```

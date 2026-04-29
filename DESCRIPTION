@@ -1,0 +1,36 @@
+Package: gmov
+Title: Generative Movement Validation
+Version: 0.0.0.9000
+Authors@R: 
+    person(
+        given = "Aurélien",
+        family = "Nicosia",
+        role = c("aut", "cre"),
+        email = "116816597+AurelienNicosiaULaval@users.noreply.github.com"
+    )
+Description: Implements trajectory-level generative validation diagnostics for
+    simulations from fitted step selection function and integrated step
+    selection function models. The package is designed as a lightweight
+    companion to 'amt': users fit and simulate movement models elsewhere, then
+    use this package to compare observed and simulated trajectories with
+    trajectory-level summaries.
+License: MIT + file LICENSE
+URL: https://github.com/AurelienNicosiaULaval/gmov
+BugReports: https://github.com/AurelienNicosiaULaval/gmov/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 4.1)
+Imports:
+    ggplot2,
+    sf,
+    tibble,
+    transport
+Suggests:
+    amt,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr

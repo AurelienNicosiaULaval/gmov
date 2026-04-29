@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use gmov, please cite the accompanying Methods in Ecology and Evolution article."
+title: "gmov: Generative Movement Validation"
+version: 0.0.0.9000
+license: MIT
+repository-code: "https://github.com/AurelienNicosiaULaval/gmov"
+authors:
+  - family-names: Nicosia
+    given-names: Aurélien
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Nicosia
+      given-names: Aurélien
+  title: "Beyond the next step: A multi-criteria generative validation framework for step selection functions"
+  journal: "Methods in Ecology and Evolution"
+  year: 2026
+  doi: "10.1111/2041-210x.70313"
+  url: "https://doi.org/10.1111/2041-210x.70313"
