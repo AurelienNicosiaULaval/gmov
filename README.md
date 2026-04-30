@@ -66,6 +66,21 @@ summary(res)
 plot(res, metric = "msd")
 ```
 
+## Vignette
+
+The package includes an executed red deer vignette based on the empirical
+workflow from Nicosia (2026). After installation, open it with:
+
+```r
+browseVignettes("gmov")
+```
+
+From the source repository, build the vignette with:
+
+```r
+devtools::build_vignettes()
+```
+
 ## Relationship to amt
 
 `gmov` is designed as a companion package for generative validation of SSF and

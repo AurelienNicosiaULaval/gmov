@@ -18,6 +18,7 @@ License: MIT + file LICENSE
 URL: https://github.com/AurelienNicosiaULaval/gmov
 BugReports: https://github.com/AurelienNicosiaULaval/gmov/issues
 Encoding: UTF-8
+LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Depends: 
