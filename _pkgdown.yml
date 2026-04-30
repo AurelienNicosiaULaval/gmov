@@ -19,6 +19,7 @@ reference:
     contents:
       - validate_ssf_generative
       - plot.gmov_generative
+      - plot_gmov_dashboard
       - gmov_metric_methods
   - title: Diagnostic functions
     contents:

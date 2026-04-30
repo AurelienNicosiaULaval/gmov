@@ -209,6 +209,22 @@ distribution of straightness indices from simulated trajectories.
 plot(deer_validation, metric = "sinuosity")
 ```
 
+## Article-style dashboard
+
+For presentations or reports, the same diagnostics can be displayed as a
+compact multi-panel dashboard. This figure keeps the generic `gmov` diagnostics
+but arranges them in a layout closer to the article workflow: trajectory panel
+on the left, diagnostic panels on the right.
+
+```{r dashboard-plot, fig.width = 9, fig.height = 5.5}
+plot_gmov_dashboard(
+  deer_validation,
+  observed = observed_track,
+  simulated = simulated_tracks,
+  n_simulations = 25
+)
+```
+
 ## Reproducing the model-fitting workflow with amt
 
 The precomputed ensemble above was produced from the red deer and forest

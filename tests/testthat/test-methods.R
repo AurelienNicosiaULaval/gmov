@@ -52,3 +52,29 @@ test_that("individual metric plot methods return ggplot objects", {
     expect_true(inherits(plot_i, "ggplot"))
   }
 })
+
+test_that("dashboard plot draws available diagnostics", {
+  tmp_plot <- tempfile(fileext = ".pdf")
+  grDevices::pdf(tmp_plot)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  on.exit(unlink(tmp_plot), add = TRUE)
+
+  observed <- data.frame(x = c(0, 1, 1, 2), y = c(0, 0, 1, 1))
+  simulated <- list(
+    data.frame(x = c(0, 1, 2, 3), y = c(0, 0, 0, 0)),
+    data.frame(x = c(0, 0, 1, 1), y = c(0, 1, 1, 2)),
+    data.frame(x = c(0, 1, 1, 1), y = c(0, 0, 1, 2))
+  )
+
+  res <- validate_ssf_generative(
+    observed,
+    simulated,
+    metrics = c("ud", "msd", "sinuosity"),
+    ud_args = list(grid_size = 4),
+    msd_args = list(max_lag = 2)
+  )
+
+  expect_no_error(plots <- plot_gmov_dashboard(res, observed, simulated, n_simulations = 2))
+  expect_true(all(c("trajectories", "ud", "msd", "sinuosity") %in% names(plots)))
+  expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
+})

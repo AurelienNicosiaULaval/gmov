@@ -68,6 +68,7 @@ res <- validate_ssf_generative(
 
 summary(res)
 plot(res, metric = "msd")
+plot_gmov_dashboard(res, observed_track, simulated_tracks)
 ```
 
 ## Vignette
