@@ -7,6 +7,69 @@ print.gmov_generative <- function(x, ...) {
   invisible(x)
 }
 
+#' Print or plot individual gmov diagnostic results
+#'
+#' These methods provide concise printing and simple ggplot2 displays for
+#' individual diagnostic objects returned by [validate_ud()], [validate_msd()],
+#' [validate_sinuosity()], and [validate_barrier_crossing()].
+#'
+#' @param x A gmov diagnostic result.
+#' @param ... Currently unused.
+#'
+#' @return Print methods return `x` invisibly. Plot methods return the ggplot
+#'   object invisibly after printing it.
+#' @name gmov_metric_methods
+NULL
+
+#' @rdname gmov_metric_methods
+#' @export
+print.gmov_metric_ud <- function(x, ...) {
+  print_metric_header("gmov utilization distribution diagnostic")
+  cat("Method:", x$method %||% "empirical_grid_wasserstein", "\n")
+  cat("Simulated tracks:", nrow(x$simulated_statistics), "\n")
+  cat("Statistic:", format_number(x$statistic), "\n")
+  cat("Monte Carlo p-value:", format_p(metric_p_value(x)), "\n")
+  cat("Alternative:", x$rank_test$alternative %||% NA_character_, "\n")
+  invisible(x)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+print.gmov_metric_msd <- function(x, ...) {
+  print_metric_header("gmov mean squared displacement diagnostic")
+  cat("Maximum lag:", x$max_lag, "\n")
+  cat("Simulated tracks:", nrow(x$simulated_statistics), "\n")
+  cat("Statistic:", format_number(x$statistic), "\n")
+  cat("Monte Carlo p-value:", format_p(metric_p_value(x)), "\n")
+  cat("Alternative:", x$rank_test$alternative %||% NA_character_, "\n")
+  invisible(x)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+print.gmov_metric_sinuosity <- function(x, ...) {
+  print_metric_header("gmov sinuosity diagnostic")
+  cat("Measure:", x$measure %||% "straightness_index", "\n")
+  cat("Simulated tracks:", nrow(x$simulated_values), "\n")
+  cat("Observed value:", format_number(x$observed_value), "\n")
+  cat("Discrepancy statistic:", format_number(x$statistic), "\n")
+  cat("Monte Carlo p-value:", format_p(metric_p_value(x)), "\n")
+  cat("Alternative:", x$rank_test$alternative %||% NA_character_, "\n")
+  invisible(x)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+print.gmov_metric_barrier <- function(x, ...) {
+  print_metric_header("gmov barrier interaction diagnostic")
+  cat("Method:", x$method %||% "segment_intersection_count", "\n")
+  cat("Simulated tracks:", nrow(x$simulated_counts), "\n")
+  cat("Observed count:", x$observed_count, "\n")
+  cat("Monte Carlo p-value:", format_p(metric_p_value(x)), "\n")
+  cat("Alternative:", x$rank_test$alternative %||% NA_character_, "\n")
+  invisible(x)
+}
+
 #' @export
 summary.gmov_generative <- function(object, ...) {
   rows <- lapply(names(object$metric_results), function(metric_name) {
@@ -76,6 +139,38 @@ plot.gmov_generative <- function(x, metric = NULL, ...) {
     print(plot_i)
   }
   invisible(plots)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+plot.gmov_metric_ud <- function(x, ...) {
+  plot_i <- plot_metric_ud(x)
+  print(plot_i)
+  invisible(plot_i)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+plot.gmov_metric_msd <- function(x, ...) {
+  plot_i <- plot_metric_msd(x)
+  print(plot_i)
+  invisible(plot_i)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+plot.gmov_metric_sinuosity <- function(x, ...) {
+  plot_i <- plot_metric_sinuosity(x)
+  print(plot_i)
+  invisible(plot_i)
+}
+
+#' @rdname gmov_metric_methods
+#' @export
+plot.gmov_metric_barrier <- function(x, ...) {
+  plot_i <- plot_metric_barrier(x)
+  print(plot_i)
+  invisible(plot_i)
 }
 
 plot_metric <- function(x) {
@@ -152,4 +247,12 @@ format_p <- function(x) {
     return("NA")
   }
   formatC(x, digits = 3, format = "f")
+}
+
+format_number <- function(x) {
+  formatC(x, digits = 4, format = "fg")
+}
+
+print_metric_header <- function(title) {
+  cat(title, "\n", sep = "")
 }
