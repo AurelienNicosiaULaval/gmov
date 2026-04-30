@@ -13,137 +13,419 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 7,
-  fig.height = 4
+  fig.height = 4,
+  message = FALSE,
+  warning = FALSE
 )
+
+run_deer_analysis <- identical(
+  tolower(Sys.getenv("GMOV_RUN_DEER_VIGNETTE")),
+  "true"
+) &&
+  requireNamespace("amt", quietly = TRUE) &&
+  requireNamespace("terra", quietly = TRUE) &&
+  requireNamespace("survival", quietly = TRUE) &&
+  requireNamespace("mvtnorm", quietly = TRUE)
+
+deer_n_sims <- suppressWarnings(as.integer(Sys.getenv("GMOV_DEER_N_SIMS", "9")))
+if (!is.finite(deer_n_sims) || deer_n_sims < 2L) {
+  deer_n_sims <- 9L
+}
 ```
 
 ```{r setup}
 library(gmov)
 ```
 
-## Motivation
+## Purpose
 
-SSF and iSSF models are usually fitted to one-step transitions. A model can fit
-local movement decisions while still generating unrealistic long-run
-trajectories when iterated forward. The goal of `gmov` is to validate simulated
-trajectories against observed trajectories using trajectory-level summaries.
+Step-selection functions (SSFs) and integrated step-selection analyses (iSSAs)
+are usually fitted to one-step movement decisions. A fitted model can therefore
+describe local choices well while still generating unrealistic trajectories when
+it is iterated forward. The goal of `gmov` is to validate supplied simulated
+trajectories against the observed trajectory using interpretable, trajectory
+level diagnostics.
 
-The framework follows Nicosia (2026), which proposes four complementary
-generative validation pillars:
+The framework follows Nicosia (2026), which evaluates generative realism with
+four complementary pillars:
 
-- emergent space use;
-- diffusion behavior;
-- path structure;
-- barrier interactions.
+1. Emergent space use: compare observed and simulated utilization distributions.
+2. Diffusion behavior: compare mean squared displacement curves.
+3. Path structure: compare path straightness or sinuosity.
+4. Barrier interactions: compare intersections with a known linear barrier.
 
-This vignette uses simulated toy data. It is illustrative and does not
-reproduce the empirical or synthetic results from the article.
+`gmov` implements these diagnostics after simulation. It does not fit SSF or
+iSSF models and it does not replace `amt`. A typical workflow is:
 
-All examples below use planar toy coordinates. For real data, observed tracks,
-simulated tracks, and barrier geometries should use a common projected
-coordinate system.
+1. prepare tracks and steps with `amt`;
+2. fit an SSF or iSSF model with `amt`;
+3. simulate replicate trajectories from the fitted model;
+4. pass the observed and simulated tracks to `gmov`.
 
-Reference: Nicosia, A. (2026). Beyond the next step: A multi-criteria
-generative validation framework for step selection functions. *Methods in
-Ecology and Evolution*. <https://doi.org/10.1111/2041-210x.70313>
+The Monte Carlo p-values reported by `gmov` are conditional diagnostics for the
+fitted model and simulation procedure supplied by the user. They should be read
+as checks of generative compatibility, not as universal goodness-of-fit
+guarantees.
 
-## Toy tracks
+## Red deer case study from the article
 
-```{r toy-data}
-set.seed(10)
+The empirical application in Nicosia (2026) uses the red deer trajectory and
+forest raster distributed with `amt`. The data describe one red deer (*Cervus
+elaphus*) from northern Germany. The article uses a regular 6-hour trajectory,
+a binary forest covariate, a 1:25 used-to-available step design, and a standard
+iSSA with forest selection and movement-kernel terms.
 
-simulate_track <- function(n = 60, step_sd = 1, drift = c(0, 0)) {
-  dx <- stats::rnorm(n, mean = drift[1], sd = step_sd)
-  dy <- stats::rnorm(n, mean = drift[2], sd = step_sd)
+The publication-scale analysis uses 99 simulated trajectories, giving a minimum
+Monte Carlo p-value of 0.01 under the +1 correction. The article reports partial
+generative realism for this individual: the fitted iSSA reproduces broad
+space-use and path straightness, but the mean squared displacement diagnostic
+detects a dynamic mismatch. Because no explicit barrier geometry is specified
+for this empirical case study, only the first three pillars are used.
 
-  data.frame(
-    x = cumsum(dx),
-    y = cumsum(dy)
+The code below is the package vignette version of that workflow. It is complete,
+but it is not run automatically during package checks because it depends on a
+working `amt` installation and can be computationally expensive. To run it,
+render the vignette with:
+
+```r
+Sys.setenv(GMOV_RUN_DEER_VIGNETTE = "true", GMOV_DEER_N_SIMS = "99")
+devtools::build_vignettes()
+```
+
+```{r deer-skip-note, echo = FALSE, results = "asis"}
+if (!run_deer_analysis) {
+  cat(
+    "The executable red deer analysis chunks are skipped in this build. ",
+    "Set `GMOV_RUN_DEER_VIGNETTE=true` and use an R environment where `amt`, ",
+    "`terra`, `survival`, and `mvtnorm` load correctly to run the full workflow.\n",
+    sep = ""
   )
 }
+```
 
-observed_track <- simulate_track(n = 60, step_sd = 0.8)
-simulated_tracks <- replicate(
-  n = 9,
-  expr = simulate_track(n = 60, step_sd = 0.8),
-  simplify = FALSE
+## Load the red deer data
+
+The `amt::deer` object is already a track with `x_`, `y_`, and `t_` columns in
+EPSG:3035. The accompanying `amt::sh_forest` raster stores binary forest cover
+for the study area.
+
+```{r deer-data, eval = run_deer_analysis}
+library(amt)
+library(terra)
+library(survival)
+
+set.seed(2025)
+
+data("deer", package = "amt")
+data("sh_forest", package = "amt")
+
+forest_map <- terra::rast(sh_forest)
+names(forest_map) <- "forest"
+
+data.frame(
+  n_fixes = nrow(deer),
+  start = min(deer$t_),
+  end = max(deer$t_),
+  median_interval_hours = stats::median(as.numeric(diff(deer$t_), units = "hours"))
 )
 ```
 
-## Run the validation
+The article resamples the track to a regular 6-hour interval with 30 minutes of
+tolerance and keeps bursts with at least two locations.
 
-```{r validation}
-res <- validate_ssf_generative(
+```{r prepare-track, eval = run_deer_analysis}
+observed_track <- deer |>
+  amt::track_resample(rate = amt::hours(6), tolerance = amt::minutes(30)) |>
+  amt::filter_min_n_burst(min_n = 2)
+
+observed_track <- observed_track[, c("x_", "y_", "t_")]
+
+data.frame(
+  n_locations = nrow(observed_track),
+  n_steps = nrow(observed_track) - 1,
+  duration_days = as.numeric(diff(range(observed_track$t_)), units = "days")
+)
+```
+
+```{r observed-track-plot, eval = run_deer_analysis}
+ggplot2::ggplot(observed_track, ggplot2::aes(x = x_, y = y_)) +
+  ggplot2::geom_path(linewidth = 0.4, color = "firebrick") +
+  ggplot2::coord_equal() +
+  ggplot2::theme_bw() +
+  ggplot2::labs(
+    x = "Easting (m)",
+    y = "Northing (m)",
+    title = "Observed red deer trajectory"
+  )
+```
+
+## Fit the iSSA with amt
+
+The model specification follows the empirical analysis in the article:
+
+```{r prepare-steps, eval = run_deer_analysis}
+ssf_data <- observed_track |>
+  amt::steps() |>
+  amt::random_steps(n_control = 25) |>
+  amt::extract_covariates(forest_map)
+
+ssf_data$cos_ta <- cos(ssf_data$ta_)
+ssf_data$log_sl <- log(ssf_data$sl_)
+ssf_data <- stats::na.omit(ssf_data)
+
+table(ssf_data$case_)
+```
+
+```{r sampling-design, eval = run_deer_analysis}
+used_steps <- ssf_data[ssf_data$case_, ]
+available_steps <- ssf_data[!ssf_data$case_, ]
+
+ggplot2::ggplot() +
+  ggplot2::geom_segment(
+    data = available_steps,
+    ggplot2::aes(x = x1_, y = y1_, xend = x2_, yend = y2_),
+    color = "grey75",
+    alpha = 0.25,
+    linewidth = 0.2
+  ) +
+  ggplot2::geom_segment(
+    data = used_steps,
+    ggplot2::aes(x = x1_, y = y1_, xend = x2_, yend = y2_),
+    color = "firebrick",
+    linewidth = 0.5
+  ) +
+  ggplot2::coord_equal() +
+  ggplot2::theme_bw() +
+  ggplot2::labs(
+    x = "Easting (m)",
+    y = "Northing (m)",
+    title = "Used and available steps",
+    subtitle = "Observed steps in red, available control steps in grey"
+  )
+```
+
+```{r fit-issf, eval = run_deer_analysis}
+deer_issf <- amt::fit_issf(
+  ssf_data,
+  case_ ~ forest + sl_ + log_sl + cos_ta + strata(step_id_)
+)
+
+summary(deer_issf)
+```
+
+## Simulate from the fitted model
+
+`gmov` validates simulated tracks supplied by the user. The helper below is
+included only to make this vignette self-contained. It mirrors the simulation
+logic used in the article: draw movement candidates from fitted movement
+distributions, evaluate the fitted iSSA selection weights, and sample one next
+location at each time step. The publication-scale analysis uses 99 simulations;
+the environment variable `GMOV_DEER_N_SIMS` controls the number used when this
+vignette is rendered.
+
+```{r simulation-helper, eval = run_deer_analysis}
+coef_or_zero <- function(beta, candidates) {
+  hit <- candidates[candidates %in% names(beta)]
+  if (length(hit) < 1L) {
+    return(0)
+  }
+  unname(beta[hit[1]])
+}
+
+simulate_deer_issf <- function(
+  model,
+  observed_track,
+  map,
+  env_covar_name = "forest",
+  n_sims = 9,
+  n_cands = 25
+) {
+  raw_model <- if (inherits(model, "fit_clogit")) model$model else model
+  beta_mean <- stats::coef(raw_model)
+  beta_vcov <- stats::vcov(raw_model)
+  beta_draws <- mvtnorm::rmvnorm(
+    n = n_sims,
+    mean = beta_mean,
+    sigma = beta_vcov
+  )
+  colnames(beta_draws) <- names(beta_mean)
+
+  observed_steps <- stats::na.omit(amt::steps(observed_track))
+  sl_distr <- amt::fit_distr(observed_steps$sl_, "gamma")
+  ta_distr <- amt::fit_distr(observed_steps$ta_, "vonmises")
+
+  n_steps <- nrow(observed_track) - 1L
+  x0 <- observed_track$x_[1]
+  y0 <- observed_track$y_[1]
+  angle0 <- atan2(
+    observed_track$y_[2] - observed_track$y_[1],
+    observed_track$x_[2] - observed_track$x_[1]
+  )
+
+  lapply(seq_len(n_sims), function(i) {
+    beta_i <- beta_draws[i, ]
+    beta_env <- coef_or_zero(beta_i, env_covar_name)
+    beta_sl <- coef_or_zero(beta_i, "sl_")
+    beta_log_sl <- coef_or_zero(beta_i, c("log_sl", "log_sl_"))
+    beta_cos_ta <- coef_or_zero(beta_i, c("cos_ta", "cos_ta_"))
+
+    x <- numeric(n_steps + 1L)
+    y <- numeric(n_steps + 1L)
+    x[1] <- x0
+    y[1] <- y0
+    current_angle <- angle0
+    last_step <- n_steps
+
+    for (step_i in seq_len(n_steps)) {
+      candidate_sl <- amt::random_numbers(sl_distr, n = n_cands)
+      candidate_ta <- amt::random_numbers(ta_distr, n = n_cands)
+      candidate_angle <- current_angle + candidate_ta
+      candidate_x <- x[step_i] + candidate_sl * cos(candidate_angle)
+      candidate_y <- y[step_i] + candidate_sl * sin(candidate_angle)
+
+      env_values <- terra::extract(map, cbind(candidate_x, candidate_y))[[env_covar_name]]
+      valid <- is.finite(env_values) & candidate_sl > 0
+
+      if (!any(valid)) {
+        last_step <- step_i - 1L
+        break
+      }
+
+      log_weight <- beta_env * env_values +
+        beta_sl * candidate_sl +
+        beta_log_sl * log(candidate_sl) +
+        beta_cos_ta * cos(candidate_ta)
+      log_weight[!valid] <- -Inf
+
+      weight <- exp(log_weight - max(log_weight, na.rm = TRUE))
+      weight[!is.finite(weight)] <- 0
+
+      if (sum(weight) <= 0) {
+        choice <- sample(which(valid), size = 1L)
+      } else {
+        choice <- sample.int(n_cands, size = 1L, prob = weight)
+      }
+
+      x[step_i + 1L] <- candidate_x[choice]
+      y[step_i + 1L] <- candidate_y[choice]
+      current_angle <- candidate_angle[choice]
+    }
+
+    data.frame(
+      x_ = x[seq_len(last_step + 1L)],
+      y_ = y[seq_len(last_step + 1L)]
+    )
+  })
+}
+```
+
+```{r simulate-tracks, eval = run_deer_analysis}
+simulated_tracks <- simulate_deer_issf(
+  model = deer_issf,
+  observed_track = observed_track,
+  map = forest_map,
+  env_covar_name = "forest",
+  n_sims = deer_n_sims,
+  n_cands = 25
+)
+
+length(simulated_tracks)
+```
+
+```{r simulated-tracks-plot, eval = run_deer_analysis}
+simulated_df <- do.call(
+  rbind,
+  Map(
+    function(track, id) {
+      data.frame(sim_id = id, x_ = track$x_, y_ = track$y_)
+    },
+    simulated_tracks,
+    seq_along(simulated_tracks)
+  )
+)
+
+ggplot2::ggplot() +
+  ggplot2::geom_path(
+    data = simulated_df,
+    ggplot2::aes(x = x_, y = y_, group = sim_id),
+    color = "grey65",
+    alpha = 0.45,
+    linewidth = 0.25
+  ) +
+  ggplot2::geom_path(
+    data = observed_track,
+    ggplot2::aes(x = x_, y = y_),
+    color = "firebrick",
+    linewidth = 0.6
+  ) +
+  ggplot2::coord_equal() +
+  ggplot2::theme_bw() +
+  ggplot2::labs(
+    x = "Easting (m)",
+    y = "Northing (m)",
+    title = "Observed and simulated red deer trajectories",
+    subtitle = "Observed trajectory in red, simulations in grey"
+  )
+```
+
+## Validate the simulated tracks with gmov
+
+For the red deer empirical application, we validate the first three pillars.
+There is no barrier diagnostic because the article did not specify a known
+barrier geometry for this individual.
+
+```{r validate-deer, eval = run_deer_analysis}
+deer_validation <- validate_ssf_generative(
   observed = observed_track,
   simulated = simulated_tracks,
   metrics = c("ud", "msd", "sinuosity"),
-  ud_args = list(grid_size = 12),
-  msd_args = list(max_lag = 20)
+  ud_args = list(grid_size = 30),
+  msd_args = list(max_lag = min(120, nrow(observed_track) - 1L))
 )
 
-summary(res)
+summary(deer_validation)
 ```
 
-## Visual summaries
-
-```{r msd-plot}
-plot(res, metric = "msd")
+```{r plot-deer-ud, eval = run_deer_analysis}
+plot(deer_validation, metric = "ud")
 ```
 
-```{r sinuosity-plot}
-plot(res, metric = "sinuosity")
+```{r plot-deer-msd, eval = run_deer_analysis}
+plot(deer_validation, metric = "msd")
 ```
 
-## Barrier interactions
-
-Barrier validation requires a known linear feature supplied before validation.
-The example below creates a simple vertical line. The diagnostic counts
-movement segments that intersect the barrier. By default, the rank test asks
-whether observed segment intersections are unusually few relative to
-simulations, which can flag a fitted model that may be too permeable.
-
-```{r barrier}
-barrier <- sf::st_sfc(
-  sf::st_linestring(matrix(c(0, -20, 0, 20), ncol = 2, byrow = TRUE)),
-  crs = 3857
-)
-
-barrier_res <- validate_ssf_generative(
-  observed = observed_track,
-  simulated = simulated_tracks,
-  metrics = "barrier",
-  barrier = barrier
-)
-
-summary(barrier_res)
-plot(barrier_res, metric = "barrier")
+```{r plot-deer-sinuosity, eval = run_deer_analysis}
+plot(deer_validation, metric = "sinuosity")
 ```
 
-## Sketch of an amt workflow
+## Reading the diagnostics
 
-The package is intended to sit after an `amt` modeling and simulation workflow.
-The precise simulation call depends on the fitted model and user choices, so
-the outline below is not evaluated. `gmov` accepts common data-frame-like
-`amt` track and step shapes, but it does not claim official integration with
-`amt` simulation internals.
+The interpretation follows the article. Passing one pillar does not imply that
+the fitted iSSA is generatively realistic in every respect. For the red deer
+case study, the article reports that the fitted model reproduced broad space
+use and path straightness, but showed a detectable mismatch in displacement
+dynamics. Ecologically, that pattern suggests that a single-state iSSA may
+average over heterogeneous movement phases: it can place simulated trajectories
+in broadly the right part of the landscape while still getting the temporal
+organization of movement wrong.
 
-```{r amt-sketch, eval = FALSE}
-library(amt)
-library(gmov)
+The exact numerical values produced by this vignette may differ from the
+publication tables because the number of simulations is configurable and the
+current package implementation uses the diagnostics documented in `gmov`.
+Publication-scale analyses should use a fixed random seed, `K = 99` or larger,
+and the same simulation design as the analysis being reported.
 
-# observed_track <- ...
-# steps <- observed_track |>
-#   steps_by_burst() |>
-#   random_steps(n = 15)
-#
-# fitted_model <- steps |>
-#   fit_clogit(case_ ~ forest + log(sl_) + cos(ta_) + strata(step_id_))
-#
-# simulated_tracks <- ...
+## References
 
-res <- validate_ssf_generative(
-  observed = observed_track,
-  simulated = simulated_tracks,
-  metrics = c("ud", "msd", "sinuosity")
-)
-```
+Avgar, T., Potts, J. R., Lewis, M. A., and Boyce, M. S. (2016). Integrated
+step selection analysis: bridging the gap between resource selection and animal
+movement. *Methods in Ecology and Evolution*, 7, 619-630.
+<https://doi.org/10.1111/2041-210X.12528>
+
+Nicosia, A. (2026). Beyond the next step: A multi-criteria generative validation
+framework for step selection functions. *Methods in Ecology and Evolution*.
+<https://doi.org/10.1111/2041-210x.70313>
+
+Signer, J., Fieberg, J., and Avgar, T. (2019). Animal movement tools (`amt`):
+R package for managing tracking data and conducting habitat selection analyses.
+*Ecology and Evolution*, 9, 880-890. <https://doi.org/10.1002/ece3.4823>
