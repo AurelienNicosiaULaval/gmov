@@ -1,0 +1,36 @@
+url: https://aureliennicosiaulaval.github.io/gmov/
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+
+articles:
+  - title: Articles
+    navbar: ~
+    contents:
+      - generative-validation-ssf
+
+reference:
+  - title: Main workflow
+    contents:
+      - validate_ssf_generative
+      - plot.gmov_generative
+      - gmov_metric_methods
+  - title: Diagnostic functions
+    contents:
+      - validate_ud
+      - validate_msd
+      - validate_sinuosity
+      - validate_barrier_crossing
+  - title: Coercion and helpers
+    contents:
+      - as_gmov_track
+      - as_gmov_simulations
+      - mc_rank_test
+  - title: Data
+    contents:
+      - red_deer_gmov

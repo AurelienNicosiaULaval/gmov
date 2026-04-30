@@ -192,65 +192,30 @@ plot(deer_validation, metric = "sinuosity")
 
 ## Reproducing the model-fitting workflow with amt
 
-The following code shows the `amt` workflow corresponding to the empirical
-application. It is not evaluated in this vignette because the package vignette
-uses the precomputed simulation ensemble above. Running the full workflow
-requires a working `amt` installation and can take longer than a typical package
-vignette build.
+The precomputed ensemble above was produced from the red deer and forest
+objects distributed with `amt`. The modelling workflow is summarized here
+rather than evaluated during vignette building, because it depends on a working
+`amt` installation and can take longer than a typical package vignette build.
 
-```{r amt-fit-workflow, eval = FALSE}
-library(amt)
-library(terra)
-library(survival)
+The empirical workflow used the following steps:
 
-set.seed(2025)
+1. Load the red deer relocation data and the forest raster distributed with
+   `amt`.
+2. Resample the trajectory to a 6-hour interval with a 30-minute tolerance.
+3. Convert the resampled trajectory to steps.
+4. Generate 25 available steps for each observed step.
+5. Extract the binary forest covariate for used and available steps.
+6. Add movement-kernel terms for step length, log step length, and cosine of
+   turning angle.
+7. Fit the iSSA with the conditional logistic regression formula shown above.
+8. Simulate replicate trajectories from the fitted model.
+9. Pass the observed trajectory and simulated trajectories to
+   `validate_ssf_generative()`.
 
-data("deer", package = "amt")
-data("sh_forest", package = "amt")
-
-forest_map <- terra::rast(sh_forest)
-names(forest_map) <- "forest"
-
-observed_track <- deer |>
-  track_resample(rate = hours(6), tolerance = minutes(30)) |>
-  filter_min_n_burst(min_n = 2)
-
-observed_track <- observed_track[, c("x_", "y_", "t_")]
-
-ssf_data <- observed_track |>
-  steps() |>
-  random_steps(n_control = 25) |>
-  extract_covariates(forest_map)
-
-ssf_data$cos_ta <- cos(ssf_data$ta_)
-ssf_data$log_sl <- log(ssf_data$sl_)
-ssf_data <- stats::na.omit(ssf_data)
-
-deer_issf <- fit_issf(
-  ssf_data,
-  case_ ~ forest + sl_ + log_sl + cos_ta + strata(step_id_)
-)
-
-summary(deer_issf)
-```
-
-After fitting, users should simulate replicate tracks from the fitted model
-using the simulation procedure appropriate for their analysis. Once the
-simulation output is a list of track-like objects, the validation step is the
-same as above:
-
-```{r gmov-after-amt, eval = FALSE}
-deer_validation <- validate_ssf_generative(
-  observed = observed_track,
-  simulated = simulated_tracks,
-  metrics = c("ud", "msd", "sinuosity"),
-  ud_args = list(grid_size = 20),
-  msd_args = list(max_lag = 80)
-)
-
-summary(deer_validation)
-plot(deer_validation, metric = "msd")
-```
+Once the simulation output is a list of track-like objects, the validation step
+is the same as in this vignette: call `validate_ssf_generative()` with the
+observed track, simulated tracks, and selected metrics, then inspect
+`summary()` and `plot()` outputs.
 
 ## Interpretation
 

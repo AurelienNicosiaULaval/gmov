@@ -15,7 +15,8 @@ Description: Implements trajectory-level generative validation diagnostics for
     use this package to compare observed and simulated trajectories with
     trajectory-level summaries.
 License: MIT + file LICENSE
-URL: https://github.com/AurelienNicosiaULaval/gmov
+URL: https://github.com/AurelienNicosiaULaval/gmov,
+    https://aureliennicosiaulaval.github.io/gmov/
 BugReports: https://github.com/AurelienNicosiaULaval/gmov/issues
 Encoding: UTF-8
 LazyData: true
@@ -37,4 +38,5 @@ Suggests:
     terra,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Config/Needs/website: pkgdown
 VignetteBuilder: knitr

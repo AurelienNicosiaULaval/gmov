@@ -13,6 +13,7 @@ fitted movement models, with a focus on SSF and iSSF workflows.
 Useful links:
 \itemize{
   \item \url{https://github.com/AurelienNicosiaULaval/gmov}
+  \item \url{https://aureliennicosiaulaval.github.io/gmov/}
   \item Report bugs at \url{https://github.com/AurelienNicosiaULaval/gmov/issues}
 }
 

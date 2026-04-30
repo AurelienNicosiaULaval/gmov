@@ -1,10 +1,12 @@
 ^\.DS_Store$
+^\.github$
 ^\.Rproj\.user$
+^_pkgdown\.yml$
 ^gmov\.Rproj$
 ^CITATION\.cff$
 ^analysis$
-^archive$
 ^docs$
+^archive$
 ^MEE_Code$
 ^mee_archive_submission$
 ^manuscript$

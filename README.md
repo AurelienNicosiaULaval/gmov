@@ -31,7 +31,11 @@ Evolution*. <https://doi.org/10.1111/2041-210x.70313>
 Install from GitHub using the repository SSH URL:
 
 ```r
-remotes::install_git("git@github.com:AurelienNicosiaULaval/gmov.git")
+remotes::install_git(
+  "git@github.com:AurelienNicosiaULaval/gmov.git",
+  build_vignettes = TRUE,
+  dependencies = TRUE
+)
 ```
 
 ## Minimal example
@@ -69,13 +73,19 @@ plot(res, metric = "msd")
 ## Vignette
 
 The package includes an executed red deer vignette based on the empirical
-workflow from Nicosia (2026). After installation, open it with:
+workflow from Nicosia (2026). If the package was installed with
+`build_vignettes = TRUE`, open it with:
 
 ```r
 browseVignettes("gmov")
 ```
 
-From the source repository, build the vignette with:
+For a faster install without local vignette building, omit
+`build_vignettes = TRUE` and read the online documentation site instead. The
+site is built with `pkgdown` from the repository source:
+<https://aureliennicosiaulaval.github.io/gmov/>.
+
+From a local source checkout, build the vignette with:
 
 ```r
 devtools::build_vignettes()
@@ -93,16 +103,13 @@ these object shapes when `amt` is available and can be loaded. Coordinates are
 assumed to be in a common planar coordinate system; `gmov` does not transform
 coordinates.
 
+Sketch only:
+
 ```r
-library(amt)
-library(gmov)
+observed_track <- ...   # prepared with amt or another movement workflow
+simulated_tracks <- ... # simulated from the fitted SSF/iSSF workflow
 
-# Sketch only:
-# observed_track <- ...
-# fitted_model <- ...
-# simulated_tracks <- ...
-
-res <- validate_ssf_generative(
+validate_ssf_generative(
   observed = observed_track,
   simulated = simulated_tracks,
   metrics = c("ud", "msd", "sinuosity")
