@@ -27,6 +27,12 @@ test_that("validate_ssf_generative returns expected class and components", {
     res_summary,
     c("metric", "statistic_name", "observed_statistic", "discrepancy_statistic", "p_value", "alternative")
   )
+
+  print_output <- capture.output(print(res))
+  expect_true(any(grepl("Validation pillars", print_output, fixed = TRUE)))
+  expect_true(any(grepl("Emergent space use", print_output, fixed = TRUE)))
+  expect_true(any(grepl("Diffusion behavior", print_output, fixed = TRUE)))
+  expect_true(any(grepl("Path structure", print_output, fixed = TRUE)))
 })
 
 test_that("validate_ssf_generative skips barrier when barrier is NULL", {

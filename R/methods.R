@@ -1,9 +1,10 @@
 #' @export
 print.gmov_generative <- function(x, ...) {
   cat("gmov generative validation\n")
+  cat("Observed locations:", x$observed_summary$n_locations, "\n")
   cat("Simulated tracks:", x$simulated_summary$n_simulations, "\n")
-  cat("Metrics:", paste(x$metrics, collapse = ", "), "\n\n")
-  print(summary(x), n = Inf)
+  cat("Validation pillars:", paste(metric_pillar(x$metrics), collapse = ", "), "\n\n")
+  print(generative_print_table(x), n = Inf, width = Inf)
   invisible(x)
 }
 
@@ -255,4 +256,26 @@ format_number <- function(x) {
 
 print_metric_header <- function(title) {
   cat(title, "\n", sep = "")
+}
+
+metric_pillar <- function(metric) {
+  unname(c(
+    ud = "Emergent space use",
+    msd = "Diffusion behavior",
+    sinuosity = "Path structure",
+    barrier = "Barrier interactions"
+  )[metric])
+}
+
+generative_print_table <- function(x) {
+  summary_tbl <- summary(x)
+  tibble::tibble(
+    pillar = metric_pillar(summary_tbl$metric),
+    metric = summary_tbl$metric,
+    diagnostic = summary_tbl$statistic_name,
+    observed = summary_tbl$observed_statistic,
+    discrepancy = summary_tbl$discrepancy_statistic,
+    p_value = summary_tbl$p_value,
+    alternative = summary_tbl$alternative
+  )
 }

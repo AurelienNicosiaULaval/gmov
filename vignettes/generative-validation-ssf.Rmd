@@ -156,16 +156,24 @@ deer_validation <- validate_ssf_generative(
   msd_args = list(max_lag = 80)
 )
 
-summary(deer_validation)
-```
-
-The result is an object of class `gmov_generative`.
-
-```{r print-validation}
 deer_validation
 ```
 
+The printed object gives a compact diagnostic scorecard with one row per
+validation pillar. The same information is also available as a tidy tibble for
+downstream work.
+
+```{r summary-validation}
+summary(deer_validation)
+```
+
 ## Visual diagnostics
+
+The default `gmov` plots are intentionally simple package diagnostics. They are
+not exact reproductions of the custom figures prepared for the article. Their
+purpose is to give a stable visual summary for any `gmov_generative` object;
+article-specific figure layouts can still be built from the returned tidy
+objects when needed.
 
 The UD diagnostic compares the observed grid utilization distribution to the
 simulated grid utilization distributions using the 1-Wasserstein distance
