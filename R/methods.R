@@ -191,10 +191,11 @@ plot_metric <- function(x) {
 }
 
 plot_metric_ud <- function(x) {
+  cols <- gmov_plot_colours()
   ggplot2::ggplot(x$simulated_statistics, ggplot2::aes(x = statistic)) +
-    ggplot2::geom_histogram(bins = 15, fill = "grey75", color = "white") +
-    ggplot2::geom_vline(xintercept = x$statistic, linewidth = 0.8) +
-    ggplot2::theme_bw() +
+    ggplot2::geom_histogram(bins = 15, fill = cols$simulated, color = "white", alpha = 0.75) +
+    ggplot2::geom_vline(xintercept = x$statistic, color = cols$observed, linewidth = 1) +
+    theme_gmov_diagnostic() +
     ggplot2::labs(
       x = "Mean 1-Wasserstein distance",
       y = "Number of simulations",
@@ -204,11 +205,21 @@ plot_metric_ud <- function(x) {
 }
 
 plot_metric_msd <- function(x) {
+  cols <- gmov_plot_colours()
   ggplot2::ggplot(x$envelope, ggplot2::aes(x = lag)) +
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = lo, ymax = hi), fill = "grey80") +
-    ggplot2::geom_line(ggplot2::aes(y = mean), linetype = "dashed") +
-    ggplot2::geom_line(data = x$observed_curve, ggplot2::aes(y = msd), linewidth = 0.8) +
-    ggplot2::theme_bw() +
+    ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = lo, ymax = hi),
+      fill = cols$simulated,
+      alpha = 0.22
+    ) +
+    ggplot2::geom_line(ggplot2::aes(y = mean), color = cols$simulated, linetype = "dashed") +
+    ggplot2::geom_line(
+      data = x$observed_curve,
+      ggplot2::aes(y = msd),
+      color = cols$observed,
+      linewidth = 0.9
+    ) +
+    theme_gmov_diagnostic() +
     ggplot2::labs(
       x = "Lag",
       y = "Mean squared displacement",
@@ -218,10 +229,11 @@ plot_metric_msd <- function(x) {
 }
 
 plot_metric_sinuosity <- function(x) {
+  cols <- gmov_plot_colours()
   ggplot2::ggplot(x$simulated_values, ggplot2::aes(x = value)) +
-    ggplot2::geom_histogram(bins = 15, fill = "grey75", color = "white") +
-    ggplot2::geom_vline(xintercept = x$observed_value, linewidth = 0.8) +
-    ggplot2::theme_bw() +
+    ggplot2::geom_histogram(bins = 15, fill = cols$simulated, color = "white", alpha = 0.75) +
+    ggplot2::geom_vline(xintercept = x$observed_value, color = cols$observed, linewidth = 1) +
+    theme_gmov_diagnostic() +
     ggplot2::labs(
       x = "Straightness index",
       y = "Number of simulations",
@@ -231,10 +243,17 @@ plot_metric_sinuosity <- function(x) {
 }
 
 plot_metric_barrier <- function(x) {
+  cols <- gmov_plot_colours()
   ggplot2::ggplot(x$simulated_counts, ggplot2::aes(x = count)) +
-    ggplot2::geom_histogram(binwidth = 1, fill = "grey75", color = "white", boundary = -0.5) +
-    ggplot2::geom_vline(xintercept = x$observed_count, linewidth = 0.8) +
-    ggplot2::theme_bw() +
+    ggplot2::geom_histogram(
+      binwidth = 1,
+      fill = cols$simulated,
+      color = "white",
+      boundary = -0.5,
+      alpha = 0.75
+    ) +
+    ggplot2::geom_vline(xintercept = x$observed_count, color = cols$observed, linewidth = 1) +
+    theme_gmov_diagnostic() +
     ggplot2::labs(
       x = "Movement segments intersecting barrier",
       y = "Number of simulations",
@@ -278,4 +297,24 @@ generative_print_table <- function(x) {
     p_value = summary_tbl$p_value,
     alternative = summary_tbl$alternative
   )
+}
+
+gmov_plot_colours <- function() {
+  list(
+    simulated = "#4C78A8",
+    observed = "#D55E00",
+    reference = "#4A4A4A",
+    grid = "grey90"
+  )
+}
+
+theme_gmov_diagnostic <- function(base_size = 11) {
+  cols <- gmov_plot_colours()
+  ggplot2::theme_minimal(base_size = base_size) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_line(color = cols$grid, linewidth = 0.3),
+      plot.title = ggplot2::element_text(face = "plain"),
+      legend.position = "bottom"
+    )
 }

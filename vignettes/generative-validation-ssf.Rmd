@@ -23,6 +23,11 @@ knitr::opts_chunk$set(
 library(gmov)
 ```
 
+```{r plot-colours, include = FALSE}
+col_sim <- "#4C78A8"
+col_obs <- "#D55E00"
+```
+
 ## Motivation
 
 Step-selection functions (SSFs) and integrated step-selection analyses (iSSAs)
@@ -99,8 +104,8 @@ mismatch in displacement dynamics.
 
 ## Observed and simulated trajectories
 
-The observed trajectory is shown in red. A subset of the 99 simulated
-trajectories is shown in grey to keep the plot readable.
+The observed trajectory is shown in orange. A subset of the 99 simulated
+trajectories is shown in blue to keep the plot readable.
 
 ```{r trajectory-plot}
 plot_sims <- simulated_tracks[seq_len(25)]
@@ -119,23 +124,27 @@ ggplot2::ggplot() +
   ggplot2::geom_path(
     data = plot_sims_df,
     ggplot2::aes(x = x_, y = y_, group = sim_id),
-    color = "grey70",
+    color = col_sim,
     alpha = 0.45,
     linewidth = 0.25
   ) +
   ggplot2::geom_path(
     data = observed_track,
     ggplot2::aes(x = x_, y = y_),
-    color = "firebrick",
-    linewidth = 0.7
+    color = col_obs,
+    linewidth = 0.8
   ) +
   ggplot2::coord_equal() +
-  ggplot2::theme_bw() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major = ggplot2::element_line(color = "grey90", linewidth = 0.3)
+  ) +
   ggplot2::labs(
     x = "Easting (m)",
     y = "Northing (m)",
     title = "Observed and simulated red deer trajectories",
-    subtitle = "Observed track in red; 25 simulated tracks in grey"
+    subtitle = "Observed track in orange; 25 simulated tracks in blue"
   )
 ```
 
@@ -173,7 +182,9 @@ The default `gmov` plots are intentionally simple package diagnostics. They are
 not exact reproductions of the custom figures prepared for the article. Their
 purpose is to give a stable visual summary for any `gmov_generative` object;
 article-specific figure layouts can still be built from the returned tidy
-objects when needed.
+objects when needed. The package plots use the same basic visual coding as the
+article workflow: blue for simulated quantities and orange for the observed
+track or observed statistic.
 
 The UD diagnostic compares the observed grid utilization distribution to the
 simulated grid utilization distributions using the 1-Wasserstein distance
