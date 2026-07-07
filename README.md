@@ -26,6 +26,14 @@ Nicosia, A. (2026). Beyond the next step: A multi-criteria generative
 validation framework for step selection functions. *Methods in Ecology and
 Evolution*. <https://doi.org/10.1111/2041-210x.70313>
 
+## Part of the research ecosystem
+
+This repository is part of Aurélien Nicosia's open research and teaching ecosystem in computational statistics, scientific R software, reproducible data science and statistical education.
+
+* Research Lab: [https://aureliennicosiaulaval.github.io/web_site/research-lab.html](https://aureliennicosiaulaval.github.io/web_site/research-lab.html)
+* GitHub profile: [https://github.com/AurelienNicosiaULaval](https://github.com/AurelienNicosiaULaval)
+* Related projects: [`Validation-SSF`](https://github.com/AurelienNicosiaULaval/Validation-SSF), [`evalue-HMM`](https://github.com/AurelienNicosiaULaval/evalue-HMM)
+
 ## Installation
 
 Install from GitHub using the repository SSH URL:
