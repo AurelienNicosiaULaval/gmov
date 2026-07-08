@@ -164,6 +164,16 @@ res <- validate_ssf_generative(
 - Add richer barrier-crossing diagnostics once the basic segment-intersection
   diagnostic has been validated against realistic workflows.
 
+## Citation
+
+To cite gmov from R, use:
+
+```r
+citation("gmov")
+```
+
+Citation metadata is also provided in `inst/CITATION` and `CITATION.cff`.
+
 ## License
 
 `gmov` is released under the MIT license.
